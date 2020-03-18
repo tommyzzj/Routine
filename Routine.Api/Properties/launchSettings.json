@@ -4,7 +4,7 @@
     "Routine.Api": {
       "commandName": "Project",
       "launchBrowser": true,
-      "launchUrl": "weatherforecast",
+      "launchUrl": "api/companies",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
