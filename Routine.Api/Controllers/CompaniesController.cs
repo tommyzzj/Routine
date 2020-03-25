@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using Routine.Api.DtoParameter;
 using Routine.Api.Models;
 using Routine.Api.Services;
 
@@ -20,13 +21,15 @@ namespace Routine.Api.Controllers
         public CompaniesController(ICompanyRepository companyRepository, IMapper mapper)
         {
             _companyRepository = companyRepository ?? throw new ArgumentNullException(nameof(companyRepository));
-            _mapper = mapper??throw new ArgumentNullException(nameof(mapper));
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<CompanyDto>>> GetCompanies()
+        [HttpHead]
+        public async Task<ActionResult<IEnumerable<CompanyDto>>> GetCompanies(
+            [FromQuery] CompanyDtoParameters parameters)
         {
-            var companies = await _companyRepository.GetCompaniesAsync();
+            var companies = await _companyRepository.GetCompaniesAsync(parameters);
 
             var companyDtos = _mapper.Map<IEnumerable<CompanyDto>>(companies);
 

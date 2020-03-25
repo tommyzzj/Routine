@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Routine.Api.Data;
+using Routine.Api.DtoParameter;
 using Routine.Api.Entities;
 
 namespace Routine.Api.Services
@@ -17,9 +18,34 @@ namespace Routine.Api.Services
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
-        public async Task<IEnumerable<Company>> GetCompaniesAsync()
+        public async Task<IEnumerable<Company>> GetCompaniesAsync(CompanyDtoParameters parameters)
         {
-            return await _context.Companies.ToListAsync();
+            if (parameters is null)
+            {
+                throw new ArgumentNullException(nameof(parameters));
+            }
+
+            if (string.IsNullOrWhiteSpace(parameters.CompanyName) &&
+                string.IsNullOrWhiteSpace(parameters.SearchTerm))
+            {
+                return await _context.Companies.ToListAsync();
+            }
+
+            var queryExpression = _context.Companies as IQueryable<Company>;
+            if (!string.IsNullOrWhiteSpace(parameters.CompanyName))
+            {
+                parameters.CompanyName = parameters.CompanyName.Trim();
+                queryExpression = queryExpression.Where(x => x.Name == parameters.CompanyName);
+            }
+
+            if (!string.IsNullOrWhiteSpace(parameters.SearchTerm))
+            {
+                parameters.SearchTerm = parameters.SearchTerm.Trim();
+                queryExpression = queryExpression.Where(x => x.Name.Contains(parameters.SearchTerm) ||
+                    x.Introduction.Contains(parameters.SearchTerm));
+            }
+
+            return await queryExpression.ToArrayAsync();
         }
 
         public async Task<Company> GetCompanyAsync(Guid companyId)
@@ -33,7 +59,7 @@ namespace Routine.Api.Services
                 .FirstOrDefaultAsync(x => x.Id == companyId);
         }
 
-        public async Task<IEnumerable<Company>> 
+        public async Task<IEnumerable<Company>>
             GetCompaniesAsync(IEnumerable<Guid> companyIds)
         {
             if (companyIds == null)
@@ -74,7 +100,7 @@ namespace Routine.Api.Services
 
         public void DeleteCompany(Company company)
         {
-            if (company==null)
+            if (company == null)
             {
                 throw new ArgumentNullException(nameof(company));
             }
@@ -92,18 +118,41 @@ namespace Routine.Api.Services
             return await _context.Companies.AnyAsync(x => x.Id == companyId);
         }
 
-        public async Task<IEnumerable<Employee>> GetEmployeesAsync(Guid companyId)
+        public async Task<IEnumerable<Employee>> GetEmployeesAsync(Guid companyId, string genderDisplay, string q)
         {
-
             if (companyId == Guid.Empty)
             {
                 throw new ArgumentNullException(nameof(companyId));
             }
 
-            return await _context.Employees
+            if (string.IsNullOrWhiteSpace(genderDisplay) && string.IsNullOrWhiteSpace(q))
+            {
+                return await _context.Employees
                 .Where(x => x.CompanyId == companyId)
                 .OrderBy(x => x.EmployeeNo)
                 .ToListAsync();
+            }
+
+            var items = _context.Employees.Where(x => x.CompanyId == companyId);
+
+            if (!string.IsNullOrWhiteSpace(genderDisplay))
+            {
+                genderDisplay = genderDisplay.Trim();
+                var gender = Enum.Parse<Gender>(genderDisplay);
+
+                items = items.Where(x => x.Gender == gender);
+            }
+
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                q = q.Trim();
+
+                items = items.Where(x => x.EmployeeNo.Contains(q)
+                || x.FirstName.Contains(q)
+                || x.LastName.Contains(q));
+            }
+
+            return await items.OrderBy(x => x.EmployeeNo).ToListAsync();
         }
 
         public async Task<Employee> GetEmployeeAsync(Guid companyId, Guid employeeId)
