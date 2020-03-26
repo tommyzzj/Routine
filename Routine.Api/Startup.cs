@@ -1,21 +1,16 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Microsoft.OpenApi.Models;
 using Routine.Api.Data;
 using Routine.Api.Services;
-using Microsoft.OpenApi.Models;
 
 namespace Routine.Api
 {
@@ -34,7 +29,28 @@ namespace Routine.Api
             services.AddControllers(setup =>
             {
                 setup.ReturnHttpNotAcceptable = true;
-            }).AddXmlDataContractSerializerFormatters();
+            }).AddXmlDataContractSerializerFormatters()
+            .ConfigureApiBehaviorOptions(setup =>
+            {
+                setup.InvalidModelStateResponseFactory = context =>
+                {
+                    var problemDetails = new ValidationProblemDetails(context.ModelState)
+                    {
+                        Type = "http://www.baidu.com",
+                        Title = "ÓÐ´íÎó£¡£¡£¡",
+                        Status = StatusCodes.Status422UnprocessableEntity,
+                        Detail = "Çë¿´ÏêÏ¸ÐÅÏ¢",
+                        Instance = context.HttpContext.Request.Path
+                    };
+
+                    problemDetails.Extensions.Add("traceId", context.HttpContext.TraceIdentifier);
+
+                    return new UnprocessableEntityObjectResult(problemDetails)
+                    {
+                        ContentTypes = { "application/problem+json" } // Fluent Validation
+                    };
+                };
+            });
 
             services.AddSwaggerGen(c =>
             {
@@ -60,14 +76,14 @@ namespace Routine.Api
             }
             else
             {
-                app.UseExceptionHandler(appBuilder=> 
+                app.UseExceptionHandler(appBuilder =>
                 {
                     appBuilder.Run(async context =>
                     {
                         context.Response.StatusCode = 500;
                         await context.Response.WriteAsync("Unexpected Error");
                     });
-                });            
+                });
             }
 
             // Enable middleware to serve generated Swagger as a JSON endpoint.
