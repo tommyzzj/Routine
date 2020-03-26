@@ -15,6 +15,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Routine.Api.Data;
 using Routine.Api.Services;
+using Microsoft.OpenApi.Models;
 
 namespace Routine.Api
 {
@@ -34,6 +35,11 @@ namespace Routine.Api
             {
                 setup.ReturnHttpNotAcceptable = true;
             }).AddXmlDataContractSerializerFormatters();
+
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
+            });
 
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
@@ -63,6 +69,16 @@ namespace Routine.Api
                     });
                 });            
             }
+
+            // Enable middleware to serve generated Swagger as a JSON endpoint.
+            app.UseSwagger();
+
+            // Enable middleware to serve swagger-ui (HTML, JS, CSS, etc.),
+            // specifying the Swagger JSON endpoint.
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+            });
 
             app.UseRouting();
 
