@@ -77,11 +77,40 @@ namespace Routine.Api.Controllers
 
             var dtoToReturn = _mapper.Map<EmployeeDto>(entity);
 
-            return CreatedAtRoute(nameof(GetEmployeeForCompany), 
-                new { 
+            return CreatedAtRoute(nameof(GetEmployeeForCompany),
+                new
+                {
                     companyId,
-                    employeeId = dtoToReturn.Id },
+                    employeeId = dtoToReturn.Id
+                },
                 dtoToReturn);
+        }
+
+        [HttpPut("{employeeId}")]
+        public async Task<IActionResult> UpdateEmployeeForCompany(
+            Guid companyId,
+            Guid employeeId,
+            EmployeeUpdateDto employee)
+        {
+            if (!await _companyRepository.CompanyExistsAsync(companyId))
+            {
+                return NotFound();
+            }
+
+            var employeeEntity = await _companyRepository.GetEmployeeAsync(companyId, employeeId);
+
+            if (employeeEntity == null)
+            {
+                return NotFound();
+            }
+
+            _mapper.Map(employee, employeeEntity);
+
+            _companyRepository.UpdateEmployee(employeeEntity);
+
+            await _companyRepository.SaveAsync();
+
+            return NoContent();
         }
     }
 }
