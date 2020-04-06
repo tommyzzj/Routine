@@ -32,7 +32,7 @@ namespace Routine.Api.Data
             modelBuilder.Entity<Employee>()
                 .HasOne(x => x.Company)
                 .WithMany(x => x.Employees)
-                .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Restrict);
+                .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Company>().HasData(
                 new Company

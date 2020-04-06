@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Routine.Api.Models
 {
     [EmployeeNoMustDifferentFromFirstName(ErrorMessage = "员工编号不可以等于名！！！")]
-    public class EmployeeAddOrUpdateDto : IValidatableObject
+    public abstract class EmployeeAddOrUpdateDto : IValidatableObject
     {
         [Display(Name = "员工号")]
         [Required(ErrorMessage = "{0}是必填项")]
