@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -22,20 +21,31 @@ namespace Routine.Api.Controllers
         private readonly ICompanyRepository _companyRepository;
         private readonly IMapper _mapper;
         private readonly IPropertyMappingService _propertyMappingService;
+        private readonly IPropertyCheckerService _propertyCheckerService;
 
-        public CompaniesController(ICompanyRepository companyRepository, IMapper mapper, IPropertyMappingService propertyMappingService)
+        public CompaniesController(
+            ICompanyRepository companyRepository,
+            IMapper mapper,
+            IPropertyMappingService propertyMappingService,
+            IPropertyCheckerService propertyCheckerService)
         {
-            _companyRepository = companyRepository ?? throw new ArgumentNullException(nameof(companyRepository));
+            _companyRepository = companyRepository ??
+                                 throw new ArgumentNullException(nameof(companyRepository));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             _propertyMappingService = propertyMappingService ?? throw new ArgumentNullException(nameof(propertyMappingService));
+            _propertyCheckerService = propertyCheckerService ?? throw new ArgumentNullException(nameof(propertyCheckerService)); ;
         }
 
         [HttpGet(Name = nameof(GetCompanies))]
         [HttpHead]
-        public async Task<ActionResult<IEnumerable<CompanyDto>>> GetCompanies(
-            [FromQuery] CompanyDtoParameters parameters)
+        public async Task<IActionResult> GetCompanies([FromQuery] CompanyDtoParameters parameters)
         {
-            if (!_propertyMappingService.ValidMappingExistsFor<CompanyDto,Company>(parameters.OrderBy))
+            if (!_propertyMappingService.ValidMappingExistsFor<CompanyDto, Company>(parameters.OrderBy))
+            {
+                return BadRequest();
+            }
+
+            if (!_propertyCheckerService.TypeHasProperties<CompanyDto>(parameters.Fields))
             {
                 return BadRequest();
             }
@@ -46,8 +56,8 @@ namespace Routine.Api.Controllers
                 ? CreateCompaniesResourceUri(parameters, ResourceUriType.PreviousPage)
                 : null;
 
-            var nextPageLink = companies.HasNext
-                ? CreateCompaniesResourceUri(parameters, ResourceUriType.NextPage)
+            var nextPageLink = companies.HasNext ?
+                CreateCompaniesResourceUri(parameters, ResourceUriType.NextPage)
                 : null;
 
             var paginationMetadata = new
@@ -60,19 +70,27 @@ namespace Routine.Api.Controllers
                 nextPageLink
             };
 
-            Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(paginationMetadata, new JsonSerializerOptions
-            {
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            }));
+            Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(paginationMetadata,
+                new JsonSerializerOptions
+                {
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                }));
 
             var companyDtos = _mapper.Map<IEnumerable<CompanyDto>>(companies);
 
-            return Ok(companyDtos);
+            return Ok(companyDtos.ShapeData(parameters.Fields));
         }
 
+
         [HttpGet("{companyId}", Name = nameof(GetCompany))]
-        public async Task<ActionResult<CompanyDto>> GetCompany(Guid companyId)
+        // [Route("{companyId}")]
+        public async Task<ActionResult<CompanyDto>> GetCompany(Guid companyId, string fields)
         {
+            if (!_propertyCheckerService.TypeHasProperties<CompanyDto>(fields))
+            {
+                return BadRequest();
+            }
+
             var company = await _companyRepository.GetCompanyAsync(companyId);
 
             if (company == null)
@@ -80,7 +98,7 @@ namespace Routine.Api.Controllers
                 return NotFound();
             }
 
-            return Ok(_mapper.Map<CompanyDto>(company));
+            return Ok(_mapper.Map<CompanyDto>(company).ShapeData(fields));
         }
 
         [HttpPost]
@@ -92,7 +110,8 @@ namespace Routine.Api.Controllers
 
             var returnDto = _mapper.Map<CompanyDto>(entity);
 
-            return CreatedAtRoute(nameof(GetCompany), new { companyId = returnDto.Id }, returnDto);
+            return CreatedAtRoute(nameof(GetCompany), new { companyId = returnDto.Id },
+                returnDto);
         }
 
         [HttpDelete("{companyId}")]
@@ -120,37 +139,44 @@ namespace Routine.Api.Controllers
             return Ok();
         }
 
-        private string CreateCompaniesResourceUri(CompanyDtoParameters parameters, ResourceUriType type)
+        private string CreateCompaniesResourceUri(CompanyDtoParameters parameters,
+            ResourceUriType type)
         {
             switch (type)
             {
                 case ResourceUriType.PreviousPage:
                     return Url.Link(nameof(GetCompanies), new
                     {
+                        fields = parameters.Fields,
+                        orderBy = parameters.OrderBy,
                         pageNumber = parameters.PageNumber - 1,
                         pageSize = parameters.PageSize,
                         companyName = parameters.CompanyName,
                         searchTerm = parameters.SearchTerm
                     });
+
                 case ResourceUriType.NextPage:
                     return Url.Link(nameof(GetCompanies), new
                     {
+                        fields = parameters.Fields,
+                        orderBy = parameters.OrderBy,
                         pageNumber = parameters.PageNumber + 1,
                         pageSize = parameters.PageSize,
                         companyName = parameters.CompanyName,
                         searchTerm = parameters.SearchTerm
                     });
+
                 default:
                     return Url.Link(nameof(GetCompanies), new
                     {
+                        fields = parameters.Fields,
+                        orderBy = parameters.OrderBy,
                         pageNumber = parameters.PageNumber,
                         pageSize = parameters.PageSize,
                         companyName = parameters.CompanyName,
                         searchTerm = parameters.SearchTerm
-                    }); ;
+                    });
             }
         }
     }
-
-
 }
