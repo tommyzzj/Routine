@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
-using Routine.Api.DtoParameter;
+using Routine.Api.DtoParameters;
 using Routine.Api.Entities;
 using Routine.Api.Helpers;
 using Routine.Api.Models;
@@ -21,11 +21,13 @@ namespace Routine.Api.Controllers
     {
         private readonly ICompanyRepository _companyRepository;
         private readonly IMapper _mapper;
+        private readonly IPropertyMappingService _propertyMappingService;
 
-        public CompaniesController(ICompanyRepository companyRepository, IMapper mapper)
+        public CompaniesController(ICompanyRepository companyRepository, IMapper mapper, IPropertyMappingService propertyMappingService)
         {
             _companyRepository = companyRepository ?? throw new ArgumentNullException(nameof(companyRepository));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _propertyMappingService = propertyMappingService ?? throw new ArgumentNullException(nameof(propertyMappingService));
         }
 
         [HttpGet(Name = nameof(GetCompanies))]
@@ -33,6 +35,11 @@ namespace Routine.Api.Controllers
         public async Task<ActionResult<IEnumerable<CompanyDto>>> GetCompanies(
             [FromQuery] CompanyDtoParameters parameters)
         {
+            if (!_propertyMappingService.ValidMappingExistsFor<CompanyDto,Company>(parameters.OrderBy))
+            {
+                return BadRequest();
+            }
+
             var companies = await _companyRepository.GetCompaniesAsync(parameters);
 
             var previousPageLink = companies.HasPrevious

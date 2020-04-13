@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Routine.Api.Data;
-using Routine.Api.DtoParameter;
 using Routine.Api.DtoParameters;
 using Routine.Api.Entities;
 using Routine.Api.Helpers;
@@ -44,6 +43,10 @@ namespace Routine.Api.Services
                 queryExpression = queryExpression.Where(x => x.Name.Contains(parameters.SearchTerm) ||
                     x.Introduction.Contains(parameters.SearchTerm));
             }
+
+            var mappingDictionary = _propertyMappingService.GetPropertyMapping<CompanyDto, Company>();
+
+            queryExpression = queryExpression.ApplySort(parameters.OrderBy, mappingDictionary);
 
             return await PagedList<Company>.CreateAsync(queryExpression, parameters.PageNumber, parameters.PageSize);
         }
