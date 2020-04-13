@@ -5,33 +5,33 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Routine.Api.Data;
 using Routine.Api.DtoParameter;
+using Routine.Api.DtoParameters;
 using Routine.Api.Entities;
+using Routine.Api.Helpers;
+using Routine.Api.Models;
 
 namespace Routine.Api.Services
 {
     public class CompanyRepository : ICompanyRepository
     {
         private readonly RoutineDbContext _context;
+        private readonly IPropertyMappingService _propertyMappingService;
 
-        public CompanyRepository(RoutineDbContext context)
+        public CompanyRepository(RoutineDbContext context, IPropertyMappingService propertyMappingService)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
+            _propertyMappingService = propertyMappingService ?? throw new ArgumentNullException(nameof(propertyMappingService));
         }
 
-        public async Task<IEnumerable<Company>> GetCompaniesAsync(CompanyDtoParameters parameters)
+        public async Task<PagedList<Company>> GetCompaniesAsync(CompanyDtoParameters parameters)
         {
             if (parameters is null)
             {
                 throw new ArgumentNullException(nameof(parameters));
             }
 
-            if (string.IsNullOrWhiteSpace(parameters.CompanyName) &&
-                string.IsNullOrWhiteSpace(parameters.SearchTerm))
-            {
-                return await _context.Companies.ToListAsync();
-            }
-
             var queryExpression = _context.Companies as IQueryable<Company>;
+
             if (!string.IsNullOrWhiteSpace(parameters.CompanyName))
             {
                 parameters.CompanyName = parameters.CompanyName.Trim();
@@ -45,7 +45,7 @@ namespace Routine.Api.Services
                     x.Introduction.Contains(parameters.SearchTerm));
             }
 
-            return await queryExpression.ToArrayAsync();
+            return await PagedList<Company>.CreateAsync(queryExpression, parameters.PageNumber, parameters.PageSize);
         }
 
         public async Task<Company> GetCompanyAsync(Guid companyId)
@@ -118,41 +118,37 @@ namespace Routine.Api.Services
             return await _context.Companies.AnyAsync(x => x.Id == companyId);
         }
 
-        public async Task<IEnumerable<Employee>> GetEmployeesAsync(Guid companyId, string genderDisplay, string q)
+        public async Task<IEnumerable<Employee>> GetEmployeesAsync(Guid companyId, EmployeeDtoParameters parameters)
         {
             if (companyId == Guid.Empty)
             {
                 throw new ArgumentNullException(nameof(companyId));
             }
 
-            if (string.IsNullOrWhiteSpace(genderDisplay) && string.IsNullOrWhiteSpace(q))
-            {
-                return await _context.Employees
-                .Where(x => x.CompanyId == companyId)
-                .OrderBy(x => x.EmployeeNo)
-                .ToListAsync();
-            }
-
             var items = _context.Employees.Where(x => x.CompanyId == companyId);
 
-            if (!string.IsNullOrWhiteSpace(genderDisplay))
+            if (!string.IsNullOrWhiteSpace(parameters.Gender))
             {
-                genderDisplay = genderDisplay.Trim();
-                var gender = Enum.Parse<Gender>(genderDisplay);
+                parameters.Gender = parameters.Gender.Trim();
+                var gender = Enum.Parse<Gender>(parameters.Gender);
 
                 items = items.Where(x => x.Gender == gender);
             }
 
-            if (!string.IsNullOrWhiteSpace(q))
+            if (!string.IsNullOrWhiteSpace(parameters.Q))
             {
-                q = q.Trim();
+                parameters.Q = parameters.Q.Trim();
 
-                items = items.Where(x => x.EmployeeNo.Contains(q)
-                || x.FirstName.Contains(q)
-                || x.LastName.Contains(q));
+                items = items.Where(x => x.EmployeeNo.Contains(parameters.Q)
+                || x.FirstName.Contains(parameters.Q)
+                || x.LastName.Contains(parameters.Q));
             }
 
-            return await items.OrderBy(x => x.EmployeeNo).ToListAsync();
+            var mappingDictionary = _propertyMappingService.GetPropertyMapping<EmployeeDto, Employee>();
+
+            items = items.ApplySort(parameters.OrderBy, mappingDictionary);
+
+            return await items.ToListAsync();
         }
 
         public async Task<Employee> GetEmployeeAsync(Guid companyId, Guid employeeId)
