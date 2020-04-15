@@ -27,9 +27,14 @@ namespace Routine.Api
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddResponseCaching();
             services.AddControllers(setup =>
             {
                 setup.ReturnHttpNotAcceptable = true;
+                setup.CacheProfiles.Add("120sCacheProfile", new CacheProfile
+                {
+                    Duration = 120
+                });
             })
             .AddNewtonsoftJson(setup =>
             {
@@ -94,6 +99,8 @@ namespace Routine.Api
                     });
                 });
             }
+
+            app.UseResponseCaching();
 
             // Enable middleware to serve generated Swagger as a JSON endpoint.
             app.UseSwagger();

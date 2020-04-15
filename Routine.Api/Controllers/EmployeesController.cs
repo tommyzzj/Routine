@@ -17,6 +17,7 @@ namespace Routine.Api.Controllers
 {
     [ApiController]
     [Route("api/companies/{companyId}/employees")]
+    [ResponseCache(CacheProfileName = "120sCacheProfile")]
     public class EmployeesController : ControllerBase
     {
         private readonly IMapper _mapper;
@@ -28,7 +29,7 @@ namespace Routine.Api.Controllers
             _companyRepository = companyRepository ?? throw new ArgumentNullException(nameof(companyRepository));
         }
 
-        [HttpGet]
+        [HttpGet(Name = nameof(GetEmployeesForCompany))]
         public async Task<ActionResult<IEnumerable<EmployeeDto>>>
             GetEmployeesForCompany(Guid companyId,
             [FromQuery]EmployeeDtoParameters parameters)
@@ -46,6 +47,7 @@ namespace Routine.Api.Controllers
         }
 
         [HttpGet("{employeeId}", Name = nameof(GetEmployeeForCompany))]
+        [ResponseCache(Duration = 60)]
         public async Task<ActionResult<EmployeeDto>>
             GetEmployeeForCompany(Guid companyId, Guid employeeId)
         {
@@ -65,7 +67,7 @@ namespace Routine.Api.Controllers
             return Ok(employeeDto);
         }
 
-        [HttpPost]
+        [HttpPost(Name = nameof(CreateEmployeeForCompany))]
         public async Task<ActionResult<EmployeeDto>> CreateEmployeeForCompany(Guid companyId, EmployeeAddDto employee)
         {
             if (!await _companyRepository.CompanyExistsAsync(companyId))
