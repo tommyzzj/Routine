@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace Routine.Api.Entities
+namespace Routine.Api.Models
 {
-    public class Company
+    public class CompanyFullDto
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
@@ -11,8 +13,7 @@ namespace Routine.Api.Entities
         public string Industry { get; set; }
         public string Product { get; set; }
         public string Introduction { get; set; }
-        public DateTime? bankruptTime { get; set; }
 
-        public ICollection<Employee> Employees { get; set; }
+        public DateTime? BankruptTime { get; set; }
     }
 }
