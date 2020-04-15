@@ -180,7 +180,7 @@ namespace Routine.Api.Controllers
             //return Ok(_mapper.Map<CompanyDto>(company).ShapeData(fields));
         }
 
-        [HttpPost(Name = nameof(CreateCompanyWithBankruptTime))]
+        [HttpPost("createCompanyWithBankruptTime", Name = nameof(CreateCompanyWithBankruptTime))]
         [RequestHeaderMatchesMediaType("Content-Type", "application/vnd.company.companyforcreationwithbankrupttime+json")]
         [Consumes("application/vnd.company.companyforcreationwithbankrupttime+json")]
         public async Task<ActionResult<CompanyDto>> CreateCompanyWithBankruptTime(CompanyAddWithBankruptTimeDto company)
