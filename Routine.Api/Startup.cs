@@ -1,6 +1,5 @@
-using System;
-using System.Linq;
 using AutoMapper;
+using Marvin.Cache.Headers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -14,6 +13,8 @@ using Microsoft.OpenApi.Models;
 using Newtonsoft.Json.Serialization;
 using Routine.Api.Data;
 using Routine.Api.Services;
+using System;
+using System.Linq;
 
 namespace Routine.Api
 {
@@ -29,6 +30,17 @@ namespace Routine.Api
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddHttpCacheHeaders(
+                expires =>
+                {
+                    expires.MaxAge = 60;
+                    expires.CacheLocation = CacheLocation.Private;
+                },
+                validation =>
+                {
+                    validation.MustRevalidate = true;
+                });
+
             services.AddResponseCaching();
             services.AddControllers(setup =>
             {
@@ -68,7 +80,7 @@ namespace Routine.Api
             services.Configure<MvcOptions>(config =>
             {
                 var newtonSoftJsonOutputFormatter = config.OutputFormatters.OfType<NewtonsoftJsonOutputFormatter>()?.FirstOrDefault();
-                if (newtonSoftJsonOutputFormatter !=null)
+                if (newtonSoftJsonOutputFormatter != null)
                 {
                     newtonSoftJsonOutputFormatter?.SupportedMediaTypes.Add("application/vnd.company.hateoas+json");
                 }
@@ -111,7 +123,9 @@ namespace Routine.Api
                 });
             }
 
-            app.UseResponseCaching();
+            //app.UseResponseCaching();
+
+            app.UseHttpCacheHeaders();
 
             // Enable middleware to serve generated Swagger as a JSON endpoint.
             app.UseSwagger();
